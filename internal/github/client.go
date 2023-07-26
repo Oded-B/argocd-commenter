@@ -48,11 +48,16 @@ func newOAuth2Client(ctx context.Context) (*http.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid GITHUB_APP_PRIVATE_KEY: %w", err)
 	}
+
+	if ghesURL != "" {
+		ghesURL = ghesURL + "/api/v3"
+	}
+
 	cfg := oauth2githubapp.Config{
 		PrivateKey:     k,
 		AppID:          appID,
 		InstallationID: installationID,
-		BaseURL:        ghesURL + "/api/v3",
+		BaseURL:        ghesURL,
 	}
 	return oauth2.NewClient(ctx, cfg.TokenSource(ctx)), nil
 }
