@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/go-github/v53/github"
 	"github.com/gregjones/httpcache"
-	"github.com/int128/oauth2-github-app"
+	oauth2githubapp "github.com/int128/oauth2-github-app"
 	"golang.org/x/oauth2"
 )
 
@@ -52,7 +52,7 @@ func newOAuth2Client(ctx context.Context) (*http.Client, error) {
 		PrivateKey:     k,
 		AppID:          appID,
 		InstallationID: installationID,
-		BaseURL:        ghesURL,
+		BaseURL:        ghesURL + "/api/v3",
 	}
 	return oauth2.NewClient(ctx, cfg.TokenSource(ctx)), nil
 }
