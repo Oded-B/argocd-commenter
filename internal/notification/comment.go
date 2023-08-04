@@ -1,9 +1,12 @@
 package notification
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
+
+	"text/template"
 
 	argocdv1alpha1 "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
 	"github.com/argoproj/gitops-engine/pkg/health"
@@ -20,7 +23,7 @@ type Comment struct {
 	Body             string
 }
 
-func NewCommentOnOnPhaseChanged(app argocdv1alpha1.Application, argocdURL string) *Comment {
+func NewCommentOnOnPhaseChanged(app argocdv1alpha1.Application, argocdURL string, ctx context.Context) *Comment {
 	if app.Spec.Source == nil {
 		return nil
 	}
@@ -32,7 +35,7 @@ func NewCommentOnOnPhaseChanged(app argocdv1alpha1.Application, argocdURL string
 	if revision == "" {
 		return nil
 	}
-	body := generateCommentOnPhaseChanged(app, argocdURL)
+	body := generateCommentOnPhaseChanged(app, argocdURL, ctx)
 	if body == "" {
 		return nil
 	}
@@ -43,7 +46,17 @@ func NewCommentOnOnPhaseChanged(app argocdv1alpha1.Application, argocdURL string
 	}
 }
 
-func generateCommentOnPhaseChanged(app argocdv1alpha1.Application, argocdURL string) string {
+type templateData struct {
+	Phase                synccommon.OperationPhase
+	App                  argocdv1alpha1.Application
+	Revision             string
+	ArgocdApplicationURL string
+}
+
+func generateCommentOnPhaseChanged(app argocdv1alpha1.Application, argocdURL string, ctx context.Context) string {
+	logger := logr.FromContextOrDiscard(ctx).WithValues(
+		"app", app.Name,
+	)
 	phase := argocd.GetOperationPhase(app)
 	if phase == "" {
 		return ""
@@ -51,19 +64,46 @@ func generateCommentOnPhaseChanged(app argocdv1alpha1.Application, argocdURL str
 	revision := argocd.GetDeployedRevision(app)
 	argocdApplicationURL := fmt.Sprintf("%s/applications/%s", argocdURL, app.Name)
 
+	var templateOutput bytes.Buffer
+	onPhaseTemplateData := templateData{
+		Phase:                phase,
+		App:                  app,
+		ArgocdApplicationURL: argocdApplicationURL,
+		Revision:             revision,
+	}
+
 	switch phase {
 	case synccommon.OperationRunning:
-		return fmt.Sprintf(":warning: Syncing [%s](%s) to %s", app.Name, argocdApplicationURL, revision)
+		commentTemplate, err := template.New("OperationRunning").ParseFiles("templates/commentOnPhaseChanged.gotmpl")
+		if err != nil {
+			logger.Error(err, "Template failure")
+		}
+		err = commentTemplate.ExecuteTemplate(&templateOutput, "OperationRunning", onPhaseTemplateData)
+		if err != nil {
+			logger.Error(err, "Template failure")
+		}
+		return templateOutput.String()
+
 	case synccommon.OperationSucceeded:
-		return fmt.Sprintf(":white_check_mark: Synced [%s](%s) to %s", app.Name, argocdApplicationURL, revision)
+		commentTemplate, err := template.New("OperationSucceeded").ParseFiles("templates/commentOnPhaseChanged.gotmpl")
+		if err != nil {
+			logger.Error(err, "Template failure")
+		}
+		err = commentTemplate.ExecuteTemplate(&templateOutput, "OperationSucceeded", onPhaseTemplateData)
+		if err != nil {
+			logger.Error(err, "Template failure")
+		}
+		return templateOutput.String()
 	case synccommon.OperationFailed, synccommon.OperationError:
-		return fmt.Sprintf("## :x: Sync %s: [%s](%s)\nError while syncing to %s:\n%s",
-			phase,
-			app.Name,
-			argocdApplicationURL,
-			revision,
-			generateSyncResultComment(app),
-		)
+		commentTemplate, err := template.New("OperationFailure").ParseFiles("templates/commentOnPhaseChanged.gotmpl")
+		if err != nil {
+			logger.Error(err, "Template failure")
+		}
+		err = commentTemplate.ExecuteTemplate(&templateOutput, "OperationFailure", onPhaseTemplateData)
+		if err != nil {
+			logger.Error(err, "Template failure")
+		}
+		return templateOutput.String()
 	}
 	return ""
 }

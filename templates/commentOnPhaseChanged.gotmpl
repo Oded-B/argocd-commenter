@@ -1,0 +1,22 @@
+{{define "OperationRunning"}}
+Started syncing [{{.App.Name}}]({{.ArgocdApplicationURL}}) to {{.Revision}}
+{{ end }}
+
+{{define "OperationSucceeded"}}
+:white_check_mark: Synced [{{.App.Name}}]({{.ArgocdApplicationURL}}) to {{.Revision}}
+{{ end }}
+
+{{define "OperationFailure"}}
+{{if .App.Status.OperationState.SyncResult }}
+## :fire: Sync {{.Phase}}: [{{.App.Name}}]({{.ArgocdApplicationURL}}) :fire:
+Error while syncing to {{.Revision}}:
+{{- range  $n, $res  := $.App.Status.OperationState.SyncResult.Resources }}
+{{- if or (eq $res.Status "SyncFailed") (eq $res.Status  "PruneSkipped")}}
+:wrench: - {{$res.Status}} - **`{{$res.Namespace}}/{{$res.Name}}({{$res.Kind}})`**:
+```
+{{$res.Message}}
+```
+{{- end }}
+{{- end}}
+{{- end}}
+{{end}}

@@ -60,7 +60,7 @@ func (r *ApplicationPhaseCommentReconciler) Reconcile(ctx context.Context, req c
 	if err != nil {
 		logger.Info("unable to determine Argo CD URL", "error", err)
 	}
-	comment := notification.NewCommentOnOnPhaseChanged(app, argocdURL)
+	comment := notification.NewCommentOnOnPhaseChanged(app, argocdURL, ctx)
 	if comment == nil {
 		logger.Info("no comment on this phase event", "phase", phase)
 		return ctrl.Result{}, nil
