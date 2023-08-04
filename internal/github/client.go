@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/go-github/v53/github"
 	"github.com/gregjones/httpcache"
-	"github.com/int128/oauth2-github-app"
+	oauth2githubapp "github.com/int128/oauth2-github-app"
 	"golang.org/x/oauth2"
 )
 
@@ -48,6 +48,11 @@ func newOAuth2Client(ctx context.Context) (*http.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid GITHUB_APP_PRIVATE_KEY: %w", err)
 	}
+
+	if ghesURL != "" {
+		ghesURL = ghesURL + "/api/v3"
+	}
+
 	cfg := oauth2githubapp.Config{
 		PrivateKey:     k,
 		AppID:          appID,

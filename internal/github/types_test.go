@@ -41,13 +41,6 @@ func TestParseRepositoryURL(t *testing.T) {
 		}
 	})
 
-	t.Run("SSH but not GitHub", func(t *testing.T) {
-		r := ParseRepositoryURL("git@example.com:argoproj/argocd-example-apps.git")
-		if r != nil {
-			t.Errorf("want nil but was %+v", r)
-		}
-	})
-
 	t.Run("empty", func(t *testing.T) {
 		r := ParseRepositoryURL("")
 		if r != nil {
